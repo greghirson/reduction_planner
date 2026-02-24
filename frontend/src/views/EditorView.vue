@@ -25,30 +25,35 @@ const previewUrl = computed(() =>
   store.imageUrls.cropped ?? store.imageUrls.original
 )
 
-const cropOpen = ref(true)
+const cropOpen = ref(false)
 const quantizeOpen = ref(false)
 const flipOpen = ref(false)
 const layersOpen = ref(false)
 const exportOpen = ref(false)
 
-// Auto-collapse completed steps and open the next one
-watch(hasCropped, (val) => {
-  if (val) {
-    cropOpen.value = false
-    quantizeOpen.value = true
+// Determine which step is the current active one based on project state
+function activeStep(): string {
+  if (!project.value) return 'crop'
+  switch (project.value.state) {
+    case 'uploaded': return 'crop'
+    case 'cropped': return 'quantize'
+    case 'quantized': return 'layers'
+    case 'layers_created': return 'export'
+    default: return 'crop'
   }
-})
-watch(hasQuantized, (val) => {
-  if (val) {
-    quantizeOpen.value = false
-    flipOpen.value = true
-  }
-})
-watch(hasLayers, (val) => {
-  if (val) {
-    layersOpen.value = false
-    exportOpen.value = true
-  }
+}
+
+function openStep(step: string) {
+  cropOpen.value = step === 'crop'
+  quantizeOpen.value = step === 'quantize'
+  flipOpen.value = step === 'flip'
+  layersOpen.value = step === 'layers'
+  exportOpen.value = step === 'export'
+}
+
+// Open the correct step whenever project state changes
+watch(() => project.value?.state, () => {
+  openStep(activeStep())
 })
 </script>
 
@@ -82,7 +87,7 @@ watch(hasLayers, (val) => {
         <span v-if="hasCropped && !cropOpen" class="accordion-badge">Cropped</span>
       </h3>
       <div v-show="cropOpen" class="accordion-body">
-        <CropPanel />
+        <CropPanel :visible="cropOpen" />
       </div>
     </section>
 

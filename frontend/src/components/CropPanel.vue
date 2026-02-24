@@ -4,6 +4,8 @@ import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
 import { useProjectStore } from '../stores/project'
 
+const props = defineProps<{ visible: boolean }>()
+
 const store = useProjectStore()
 const imgRef = ref<HTMLImageElement | null>(null)
 let cropper: Cropper | null = null
@@ -64,6 +66,17 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cropper?.destroy()
   cropper = null
+})
+
+// Reinitialize cropper when accordion opens (container goes from hidden to visible)
+watch(() => props.visible, (val) => {
+  if (val) {
+    setTimeout(() => {
+      cropper?.destroy()
+      cropper = null
+      initCropper()
+    }, 0)
+  }
 })
 
 // Reinitialize cropper when project changes (e.g. new upload)
