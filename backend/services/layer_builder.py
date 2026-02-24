@@ -39,12 +39,13 @@ def build_layers(project_id: str, order: list[int] | None = None) -> dict:
 
     n = len(sorted_palette)
     for layer_idx in range(n):
-        # Layer layer_idx shows colors from index 0..layer_idx on white
+        # Layer layer_idx: all pixels from layers 0..layer_idx shown in this layer's color
         canvas = np.full_like(pixels, 255)
+        layer_color = sorted_palette[layer_idx]
         for ci in range(layer_idx + 1):
             original_palette_idx = order[ci]
             mask = labels == original_palette_idx
-            canvas[mask] = sorted_palette[ci]
+            canvas[mask] = layer_color
         layer_img = Image.fromarray(canvas)
         layer_img.save(layers_dir / f"layer_{layer_idx}.png", "PNG")
 
