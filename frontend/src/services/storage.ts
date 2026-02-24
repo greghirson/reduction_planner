@@ -14,6 +14,7 @@ export interface ProjectRecord {
   images: {
     original?: Blob
     cropped?: Blob
+    backgroundRemoved?: Blob
     quantized?: Blob
     flipped?: Blob
     layers?: Blob[]

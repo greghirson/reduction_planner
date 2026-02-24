@@ -2,6 +2,7 @@
 import { onMounted, computed, ref, watch } from 'vue'
 import { useProjectStore } from '../stores/project'
 import CropPanel from '../components/CropPanel.vue'
+import BackgroundPanel from '../components/BackgroundPanel.vue'
 import QuantizationPanel from '../components/QuantizationPanel.vue'
 import FlipPanel from '../components/FlipPanel.vue'
 import LayerViewer from '../components/LayerViewer.vue'
@@ -20,12 +21,14 @@ const hasQuantized = computed(() =>
   project.value && ['quantized', 'layers_created'].includes(project.value.state)
 )
 const hasLayers = computed(() => project.value?.state === 'layers_created')
+const hasBackgroundRemoved = computed(() => !!store.currentRecord?.images.backgroundRemoved)
 const hasFlip = computed(() => project.value?.h_flip || project.value?.v_flip)
 const previewUrl = computed(() =>
-  store.imageUrls.cropped ?? store.imageUrls.original
+  store.imageUrls.backgroundRemoved ?? store.imageUrls.cropped ?? store.imageUrls.original
 )
 
 const cropOpen = ref(false)
+const backgroundOpen = ref(false)
 const quantizeOpen = ref(false)
 const flipOpen = ref(false)
 const layersOpen = ref(false)
@@ -36,7 +39,7 @@ function activeStep(): string {
   if (!project.value) return 'crop'
   switch (project.value.state) {
     case 'uploaded': return 'crop'
-    case 'cropped': return 'quantize'
+    case 'cropped': return 'background'
     case 'quantized': return 'layers'
     case 'layers_created': return 'export'
     default: return 'crop'
@@ -45,10 +48,15 @@ function activeStep(): string {
 
 function openStep(step: string) {
   cropOpen.value = step === 'crop'
+  backgroundOpen.value = step === 'background'
   quantizeOpen.value = step === 'quantize'
   flipOpen.value = step === 'flip'
-  layersOpen.value = step === 'layers'
+  layersOpen.value = step === 'layers' || step === 'export'
   exportOpen.value = step === 'export'
+}
+
+function onBackgroundDone() {
+  openStep('quantize')
 }
 
 // Open the correct step whenever project state changes
@@ -88,6 +96,17 @@ watch(() => project.value?.state, () => {
       </h3>
       <div v-show="cropOpen" class="accordion-body">
         <CropPanel :visible="cropOpen" />
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3 class="accordion-header" @click="backgroundOpen = !backgroundOpen">
+        <span class="accordion-arrow" :class="{ open: backgroundOpen }">&#9654;</span>
+        Background Removal
+        <span v-if="hasBackgroundRemoved && !backgroundOpen" class="accordion-badge">Modified</span>
+      </h3>
+      <div v-show="backgroundOpen" class="accordion-body">
+        <BackgroundPanel :visible="backgroundOpen" @done="onBackgroundDone" />
       </div>
     </section>
 

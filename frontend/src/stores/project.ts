@@ -6,6 +6,7 @@ import { cropImage as cropBlob } from '../services/cropper'
 import { flipImage as flipBlob } from '../services/flipper'
 import { quantize as runQuantize, replacePalette as runReplacePalette } from '../services/quantizer'
 import { buildLayers as runBuildLayers } from '../services/layerBuilder'
+import { floodFillToWhite, floodFillToColor } from '../services/backgroundRemover'
 
 export interface Project {
   id: string
@@ -73,6 +74,9 @@ export const useProjectStore = defineStore('project', () => {
     }
     if (record.images.cropped) {
       urls.cropped = URL.createObjectURL(record.images.cropped)
+    }
+    if (record.images.backgroundRemoved) {
+      urls.backgroundRemoved = URL.createObjectURL(record.images.backgroundRemoved)
     }
     if (record.images.quantized) {
       urls.quantized = URL.createObjectURL(record.images.quantized)
@@ -184,6 +188,7 @@ export const useProjectStore = defineStore('project', () => {
         images: {
           original: currentRecord.value.images.original,
           cropped,
+          // backgroundRemoved intentionally cleared — downstream of crop
         },
       }
       await saveAndRefresh(record)
@@ -196,7 +201,9 @@ export const useProjectStore = defineStore('project', () => {
     if (!currentRecord.value) return
     loading.value = true
     try {
-      const source = currentRecord.value.images.cropped ?? currentRecord.value.images.original!
+      const source = currentRecord.value.images.backgroundRemoved
+        ?? currentRecord.value.images.cropped
+        ?? currentRecord.value.images.original!
       const result = await runQuantize(source, colorCount)
 
       const record: ProjectRecord = {
@@ -213,6 +220,7 @@ export const useProjectStore = defineStore('project', () => {
         images: {
           original: currentRecord.value.images.original,
           cropped: currentRecord.value.images.cropped,
+          backgroundRemoved: currentRecord.value.images.backgroundRemoved,
           quantized: result.quantizedBlob,
         },
       }
@@ -312,6 +320,64 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  async function removeBackground(x: number, y: number, tolerance: number, color?: [number, number, number]) {
+    if (!currentRecord.value) return
+    loading.value = true
+    try {
+      const source = currentRecord.value.images.backgroundRemoved
+        ?? currentRecord.value.images.cropped
+        ?? currentRecord.value.images.original!
+      const result = color
+        ? await floodFillToColor(source, x, y, tolerance, color)
+        : await floodFillToWhite(source, x, y, tolerance)
+
+      const record: ProjectRecord = {
+        ...currentRecord.value,
+        images: {
+          ...currentRecord.value.images,
+          backgroundRemoved: result,
+          // Clear downstream artifacts
+          quantized: undefined,
+          flipped: undefined,
+          layers: undefined,
+        },
+        // Keep state at cropped (or uploaded) — don't advance
+        state: currentRecord.value.images.cropped ? 'cropped' : 'uploaded',
+        color_count: undefined,
+        palette: undefined,
+        layer_order: undefined,
+        h_flip: undefined,
+        v_flip: undefined,
+        labels: undefined,
+      }
+      await saveAndRefresh(record)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function resetBackground() {
+    if (!currentRecord.value) return
+    const record: ProjectRecord = {
+      ...currentRecord.value,
+      images: {
+        ...currentRecord.value.images,
+        backgroundRemoved: undefined,
+        quantized: undefined,
+        flipped: undefined,
+        layers: undefined,
+      },
+      state: currentRecord.value.images.cropped ? 'cropped' : 'uploaded',
+      color_count: undefined,
+      palette: undefined,
+      layer_order: undefined,
+      h_flip: undefined,
+      v_flip: undefined,
+      labels: undefined,
+    }
+    await saveAndRefresh(record)
+  }
+
   return {
     projects,
     current,
@@ -324,6 +390,8 @@ export const useProjectStore = defineStore('project', () => {
     deleteProject,
     saveAndRefresh,
     cropImage,
+    removeBackground,
+    resetBackground,
     quantize,
     updatePalette,
     flipImage,
