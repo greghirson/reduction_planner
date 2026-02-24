@@ -3,7 +3,7 @@ import shutil
 import uuid
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from backend.config import PROJECTS_DIR
 
@@ -23,7 +23,9 @@ def create_project(name: str, image_bytes: bytes) -> dict:
     project_dir = PROJECTS_DIR / project_id
     project_dir.mkdir()
 
-    img = Image.open(__import__("io").BytesIO(image_bytes)).convert("RGB")
+    img = Image.open(__import__("io").BytesIO(image_bytes))
+    img = ImageOps.exif_transpose(img)
+    img = img.convert("RGB")
     img.save(project_dir / "original.png", "PNG")
 
     meta = {

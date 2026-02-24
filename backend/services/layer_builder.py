@@ -18,11 +18,17 @@ def build_layers(project_id: str, order: list[int] | None = None) -> dict:
     img = Image.open(project_dir / "quantized.png")
     pixels = np.array(img)
 
+    # Find the white (paper) color — always force it to the bottom
+    white_idx = max(range(len(palette)), key=lambda i: _luminance(palette[i]))
+
     if order is None:
         # Sort by luminance: darkest first (top/detail layer), lightest last (base)
         indexed = list(enumerate(palette))
         indexed.sort(key=lambda x: _luminance(x[1]))
         order = [i for i, _ in indexed]
+    elif order[-1] != white_idx:
+        # Ensure white is always last regardless of custom ordering
+        order = [i for i in order if i != white_idx] + [white_idx]
 
     sorted_palette = [palette[i] for i in order]
 

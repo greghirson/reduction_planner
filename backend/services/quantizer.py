@@ -7,16 +7,28 @@ from sklearn.cluster import MiniBatchKMeans
 from backend.services.project_manager import get_project_dir, get_project, save_meta
 
 
+WHITE = [255, 255, 255]
+
+
 def quantize(project_id: str, color_count: int) -> dict:
     project_dir = get_project_dir(project_id)
     img = Image.open(project_dir / "original.png")
     pixels = np.array(img).reshape(-1, 3).astype(np.float64)
 
-    kmeans = MiniBatchKMeans(n_clusters=color_count, random_state=42, n_init=3)
+    # Cluster into N-1 colors, then add white as the fixed base layer
+    n_clusters = max(color_count - 1, 1)
+    kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=42, n_init=3)
     kmeans.fit(pixels)
 
     palette = kmeans.cluster_centers_.round().astype(int).tolist()
-    labels = kmeans.labels_
+    palette.append(WHITE)
+    white_idx = len(palette) - 1
+
+    # Assign each pixel to nearest palette color (including white)
+    palette_arr = np.array(palette, dtype=np.float64)
+    dists = np.linalg.norm(pixels[:, None, :] - palette_arr[None, :, :], axis=2)
+    labels = dists.argmin(axis=1)
+
     quantized_pixels = np.array(palette)[labels].astype(np.uint8)
     quantized_img = Image.fromarray(quantized_pixels.reshape(img.size[1], img.size[0], 3))
     quantized_img.save(project_dir / "quantized.png", "PNG")
