@@ -64,15 +64,9 @@ export const useProjectStore = defineStore('project', () => {
     return blobUrls.value
   })
 
-  function revokeBlobUrls() {
-    for (const url of Object.values(blobUrls.value)) {
-      URL.revokeObjectURL(url)
-    }
-    blobUrls.value = {}
-  }
-
   function buildBlobUrls(record: ProjectRecord) {
-    revokeBlobUrls()
+    // Build new URLs first, then swap and revoke old ones
+    // This prevents a window where old URLs are revoked but new ones aren't set yet
     const urls: Record<string, string> = {}
     if (record.images.original) {
       urls.original = URL.createObjectURL(record.images.original)
@@ -91,7 +85,14 @@ export const useProjectStore = defineStore('project', () => {
         urls[`layer_${i}`] = URL.createObjectURL(blob)
       })
     }
+
+    const oldUrls = blobUrls.value
     blobUrls.value = urls
+
+    // Revoke old URLs after setting new ones
+    for (const url of Object.values(oldUrls)) {
+      URL.revokeObjectURL(url)
+    }
   }
 
   async function fetchProjects() {
@@ -147,15 +148,20 @@ export const useProjectStore = defineStore('project', () => {
     if (current.value?.id === id) {
       current.value = null
       currentRecord.value = null
-      revokeBlobUrls()
+      const oldUrls = blobUrls.value
+      blobUrls.value = {}
+      for (const url of Object.values(oldUrls)) {
+        URL.revokeObjectURL(url)
+      }
     }
   }
 
   async function saveAndRefresh(record: ProjectRecord) {
-    await storage.saveProject(record)
+    // Update UI immediately with in-memory Blobs, then persist to IndexedDB
     currentRecord.value = record
     current.value = projectFromRecord(record)
     buildBlobUrls(record)
+    await storage.saveProject(record)
   }
 
   // --- Processing stubs (implemented in later phases) ---
@@ -279,13 +285,15 @@ export const useProjectStore = defineStore('project', () => {
     if (!currentRecord.value || !currentRecord.value.palette) return
     loading.value = true
     try {
-      const source = currentRecord.value.images.flipped ?? currentRecord.value.images.quantized!
+      const isFlipped = !!currentRecord.value.images.flipped
+      const source = isFlipped ? currentRecord.value.images.flipped! : currentRecord.value.images.quantized!
       const result = await runBuildLayers(
         source,
         currentRecord.value.palette,
         currentRecord.value.labels,
         currentRecord.value.imageWidth,
         currentRecord.value.imageHeight,
+        isFlipped,
         order,
       )
 

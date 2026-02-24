@@ -86,14 +86,15 @@ export async function buildLayers(
   storedLabels: Uint8Array | undefined,
   imageWidth: number | undefined,
   imageHeight: number | undefined,
+  isFlipped: boolean,
   order?: number[],
 ): Promise<BuildLayersResult> {
-  // Get labels: reuse stored labels or recompute from source image
+  // Get labels: reuse stored labels only if not flipped (labels match unflipped image)
   let labels: Uint8Array
   let width: number
   let height: number
 
-  if (storedLabels && imageWidth && imageHeight) {
+  if (storedLabels && imageWidth && imageHeight && !isFlipped) {
     labels = storedLabels
     width = imageWidth
     height = imageHeight
