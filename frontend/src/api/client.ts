@@ -31,6 +31,15 @@ export async function deleteProject(id: string) {
   await request(`/projects/${id}`, { method: 'DELETE' })
 }
 
+export async function cropImage(id: string, x: number, y: number, width: number, height: number) {
+  const res = await request(`/projects/${id}/crop`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ x, y, width, height }),
+  })
+  return res.json()
+}
+
 export async function quantize(id: string, colorCount: number) {
   const res = await request(`/projects/${id}/quantize`, {
     method: 'POST',

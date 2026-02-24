@@ -43,6 +43,17 @@ export const useProjectStore = defineStore('project', () => {
     if (current.value?.id === id) current.value = null
   }
 
+  async function cropImage(x: number, y: number, width: number, height: number) {
+    if (!current.value) return
+    loading.value = true
+    try {
+      current.value = await api.cropImage(current.value.id, x, y, width, height)
+      imageVersion.value++
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function quantize(colorCount: number) {
     if (!current.value) return
     loading.value = true
@@ -70,5 +81,5 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  return { projects, current, loading, imageVersion, fetchProjects, loadProject, createProject, deleteProject, quantize, updatePalette, createLayers }
+  return { projects, current, loading, imageVersion, fetchProjects, loadProject, createProject, deleteProject, cropImage, quantize, updatePalette, createLayers }
 })

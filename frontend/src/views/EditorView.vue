@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref, watch } from 'vue'
 import { useProjectStore } from '../stores/project'
 import { imageUrl } from '../api/client'
+import CropPanel from '../components/CropPanel.vue'
 import QuantizationPanel from '../components/QuantizationPanel.vue'
 import LayerViewer from '../components/LayerViewer.vue'
 import ExportPanel from '../components/ExportPanel.vue'
@@ -12,10 +13,23 @@ const store = useProjectStore()
 onMounted(() => store.loadProject(props.id))
 
 const project = computed(() => store.current)
+const hasCropped = computed(() =>
+  project.value && ['cropped', 'quantized', 'layers_created'].includes(project.value.state)
+)
 const hasQuantized = computed(() =>
   project.value && ['quantized', 'layers_created'].includes(project.value.state)
 )
 const hasLayers = computed(() => project.value?.state === 'layers_created')
+const previewImage = computed(() =>
+  hasCropped.value ? 'cropped.png' : 'original.png'
+)
+
+const cropOpen = ref(true)
+
+// Auto-collapse crop panel once cropped
+watch(hasCropped, (val) => {
+  if (val) cropOpen.value = false
+})
 </script>
 
 <template>
@@ -27,13 +41,24 @@ const hasLayers = computed(() => project.value?.state === 'layers_created')
       <h3>Images</h3>
       <div class="image-row">
         <div>
-          <h4>Original</h4>
-          <img :src="imageUrl(project.id, 'original.png')" alt="Original" class="preview" />
+          <h4>{{ hasCropped ? 'Cropped' : 'Original' }}</h4>
+          <img :src="imageUrl(project.id, previewImage) + '?v=' + store.imageVersion" :alt="hasCropped ? 'Cropped' : 'Original'" class="preview" />
         </div>
         <div v-if="hasQuantized">
           <h4>Quantized ({{ project.color_count }} colors)</h4>
           <img :src="imageUrl(project.id, 'quantized.png') + '?v=' + store.imageVersion" alt="Quantized" class="preview" />
         </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3 class="accordion-header" @click="cropOpen = !cropOpen">
+        <span class="accordion-arrow" :class="{ open: cropOpen }">&#9654;</span>
+        Crop
+        <span v-if="hasCropped && !cropOpen" class="accordion-badge">Cropped</span>
+      </h3>
+      <div v-show="cropOpen" class="accordion-body">
+        <CropPanel />
       </div>
     </section>
 
@@ -84,5 +109,29 @@ h4 {
 }
 .loading {
   color: #666;
+}
+.accordion-header {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.accordion-arrow {
+  font-size: 0.75rem;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.accordion-arrow.open {
+  transform: rotate(90deg);
+}
+.accordion-badge {
+  font-size: 0.75rem;
+  font-weight: normal;
+  color: #16a34a;
+  margin-left: auto;
+}
+.accordion-body {
+  margin-top: 1rem;
 }
 </style>

@@ -1,10 +1,18 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from backend.models.schemas import QuantizeRequest, PaletteUpdateRequest, LayerRequest, ProjectDetail
-from backend.services import project_manager, quantizer, layer_builder, exporter
+from backend.models.schemas import CropRequest, QuantizeRequest, PaletteUpdateRequest, LayerRequest, ProjectDetail
+from backend.services import project_manager, quantizer, layer_builder, exporter, cropper
 
 router = APIRouter(prefix="/api/projects", tags=["processing"])
+
+
+@router.post("/{project_id}/crop", response_model=ProjectDetail)
+async def crop(project_id: str, req: CropRequest):
+    if not project_manager.get_project(project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+    meta = cropper.crop(project_id, req.x, req.y, req.width, req.height)
+    return meta
 
 
 @router.post("/{project_id}/quantize", response_model=ProjectDetail)

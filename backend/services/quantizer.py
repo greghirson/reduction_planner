@@ -12,7 +12,10 @@ WHITE = [255, 255, 255]
 
 def quantize(project_id: str, color_count: int) -> dict:
     project_dir = get_project_dir(project_id)
-    img = Image.open(project_dir / "original.png")
+    source = project_dir / "cropped.png"
+    if not source.exists():
+        source = project_dir / "original.png"
+    img = Image.open(source)
     pixels = np.array(img).reshape(-1, 3).astype(np.float64)
 
     # Cluster into N-1 colors, then add white as the fixed base layer

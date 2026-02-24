@@ -17,6 +17,13 @@ class ProjectDetail(BaseModel):
     layer_count: int | None = None
 
 
+class CropRequest(BaseModel):
+    x: int
+    y: int
+    width: int
+    height: int
+
+
 class QuantizeRequest(BaseModel):
     color_count: int
 
