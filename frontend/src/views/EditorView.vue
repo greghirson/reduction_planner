@@ -24,9 +24,10 @@ const hasLayers = computed(() => project.value?.state === 'layers_created')
     <h2>{{ project.name }}</h2>
 
     <section class="panel">
-      <h3>Original Image</h3>
+      <h3>Images</h3>
       <div class="image-row">
         <div>
+          <h4>Original</h4>
           <img :src="imageUrl(project.id, 'original.png')" alt="Original" class="preview" />
         </div>
         <div v-if="hasQuantized">
