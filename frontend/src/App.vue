@@ -8,6 +8,7 @@
     <main>
       <router-view />
     </main>
+    <footer>&copy; 2026 Greg Hirson</footer>
   </div>
 </template>
 
@@ -29,5 +30,13 @@ main {
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+}
+footer {
+  padding: 1.5rem 2rem;
+  text-align: center;
+  color: #999;
+  font-size: 0.85rem;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 2rem;
 }
 </style>

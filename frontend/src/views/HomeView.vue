@@ -22,6 +22,10 @@ async function onDelete(id: string) {
 
 <template>
   <div class="home">
+    <p class="intro">
+      Plan your reduction block prints from start to finish. Upload a photo or image, reduce it to a limited color palette, arrange your layers, and export print-ready separations.
+    </p>
+
     <section class="upload-section">
       <h2>New Project</h2>
       <ImageUploader @created="onCreated" />
@@ -48,6 +52,11 @@ async function onDelete(id: string) {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+}
+.intro {
+  color: #555;
+  line-height: 1.6;
+  margin: 0;
 }
 .upload-section, .projects-section {
   border: 1px solid #e0e0e0;
