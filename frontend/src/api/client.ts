@@ -40,6 +40,15 @@ export async function quantize(id: string, colorCount: number) {
   return res.json()
 }
 
+export async function updatePalette(id: string, palette: number[][]) {
+  const res = await request(`/projects/${id}/palette`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ palette }),
+  })
+  return res.json()
+}
+
 export async function createLayers(id: string, order?: number[]) {
   const res = await request(`/projects/${id}/layers`, {
     method: 'POST',

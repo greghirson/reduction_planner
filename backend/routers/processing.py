@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from backend.models.schemas import QuantizeRequest, LayerRequest, ProjectDetail
+from backend.models.schemas import QuantizeRequest, PaletteUpdateRequest, LayerRequest, ProjectDetail
 from backend.services import project_manager, quantizer, layer_builder, exporter
 
 router = APIRouter(prefix="/api/projects", tags=["processing"])
@@ -15,6 +15,19 @@ async def quantize(project_id: str, req: QuantizeRequest):
         raise HTTPException(status_code=400, detail="color_count must be 2-12")
     meta = quantizer.quantize(project_id, req.color_count)
     return meta
+
+
+@router.put("/{project_id}/palette", response_model=ProjectDetail)
+async def update_palette(project_id: str, req: PaletteUpdateRequest):
+    meta = project_manager.get_project(project_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if meta["state"] not in ("quantized", "layers_created"):
+        raise HTTPException(status_code=400, detail="Must quantize first")
+    if len(req.palette) != meta["color_count"]:
+        raise HTTPException(status_code=400, detail="Palette size must match color_count")
+    result = quantizer.replace_palette(project_id, req.palette)
+    return result
 
 
 @router.post("/{project_id}/layers", response_model=ProjectDetail)

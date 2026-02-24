@@ -21,5 +21,9 @@ class QuantizeRequest(BaseModel):
     color_count: int
 
 
+class PaletteUpdateRequest(BaseModel):
+    palette: list[list[int]]
+
+
 class LayerRequest(BaseModel):
     order: list[int] | None = None

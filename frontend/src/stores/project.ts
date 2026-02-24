@@ -16,6 +16,7 @@ export const useProjectStore = defineStore('project', () => {
   const projects = ref<Project[]>([])
   const current = ref<Project | null>(null)
   const loading = ref(false)
+  const imageVersion = ref(0)
 
   async function fetchProjects() {
     projects.value = await api.listProjects()
@@ -47,9 +48,16 @@ export const useProjectStore = defineStore('project', () => {
     loading.value = true
     try {
       current.value = await api.quantize(current.value.id, colorCount)
+      imageVersion.value++
     } finally {
       loading.value = false
     }
+  }
+
+  async function updatePalette(palette: number[][]) {
+    if (!current.value) return
+    current.value = await api.updatePalette(current.value.id, palette)
+    imageVersion.value++
   }
 
   async function createLayers(order?: number[]) {
@@ -62,5 +70,5 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  return { projects, current, loading, fetchProjects, loadProject, createProject, deleteProject, quantize, createLayers }
+  return { projects, current, loading, imageVersion, fetchProjects, loadProject, createProject, deleteProject, quantize, updatePalette, createLayers }
 })

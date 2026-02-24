@@ -31,7 +31,7 @@ const hasLayers = computed(() => project.value?.state === 'layers_created')
         </div>
         <div v-if="hasQuantized">
           <h4>Quantized ({{ project.color_count }} colors)</h4>
-          <img :src="imageUrl(project.id, 'quantized.png') + '?t=' + Date.now()" alt="Quantized" class="preview" />
+          <img :src="imageUrl(project.id, 'quantized.png') + '?v=' + store.imageVersion" alt="Quantized" class="preview" />
         </div>
       </div>
     </section>
