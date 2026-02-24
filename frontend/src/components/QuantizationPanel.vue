@@ -98,7 +98,7 @@ watch(palette, () => {
         Pick color:
         <input
           type="color"
-          :value="rgbToHex(displayPalette[editingIndex])"
+          :value="editingIndex !== null ? rgbToHex(displayPalette[editingIndex]!) : '#000000'"
           @input="onColorInput(editingIndex, $event)"
         />
       </label>

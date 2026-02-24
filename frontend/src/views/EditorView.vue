@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, computed, ref, watch } from 'vue'
 import { useProjectStore } from '../stores/project'
-import { imageUrl } from '../api/client'
 import CropPanel from '../components/CropPanel.vue'
 import QuantizationPanel from '../components/QuantizationPanel.vue'
 import FlipPanel from '../components/FlipPanel.vue'
@@ -22,8 +21,8 @@ const hasQuantized = computed(() =>
 )
 const hasLayers = computed(() => project.value?.state === 'layers_created')
 const hasFlip = computed(() => project.value?.h_flip || project.value?.v_flip)
-const previewImage = computed(() =>
-  hasCropped.value ? 'cropped.png' : 'original.png'
+const previewUrl = computed(() =>
+  store.imageUrls.cropped ?? store.imageUrls.original
 )
 
 const cropOpen = ref(true)
@@ -62,16 +61,16 @@ watch(hasLayers, (val) => {
       <h3>Images</h3>
       <div class="image-row">
         <div>
-          <h4>{{ hasCropped ? 'Cropped' : 'Original' }}</h4>
-          <img :src="imageUrl(project.id, previewImage) + '?v=' + store.imageVersion" :alt="hasCropped ? 'Cropped' : 'Original'" class="preview" />
+          <h4>{{ store.imageUrls.cropped ? 'Cropped' : 'Original' }}</h4>
+          <img :src="previewUrl" :alt="store.imageUrls.cropped ? 'Cropped' : 'Original'" class="preview" />
         </div>
         <div v-if="hasQuantized">
           <h4>Quantized ({{ project.color_count }} colors)</h4>
-          <img :src="imageUrl(project.id, 'quantized.png') + '?v=' + store.imageVersion" alt="Quantized" class="preview" />
+          <img :src="store.imageUrls.quantized" alt="Quantized" class="preview" />
         </div>
         <div v-if="hasFlip">
           <h4>Flipped</h4>
-          <img :src="imageUrl(project.id, 'flipped.png') + '?v=' + store.imageVersion" alt="Flipped" class="preview" />
+          <img :src="store.imageUrls.flipped" alt="Flipped" class="preview" />
         </div>
       </div>
     </section>

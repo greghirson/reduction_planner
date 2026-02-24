@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useProjectStore } from '../stores/project'
-import { imageUrl } from '../api/client'
 
 const store = useProjectStore()
 
@@ -23,7 +22,7 @@ async function generateLayers() {
       <div v-for="i in layerCount" :key="i" class="layer-card">
         <h4>Layer {{ i - 1 }}</h4>
         <img
-          :src="imageUrl(project.id, `layer_${i - 1}.png`) + '?t=' + Date.now()"
+          :src="store.imageUrls[`layer_${i - 1}`]"
           :alt="`Layer ${i - 1}`"
           class="layer-img"
         />

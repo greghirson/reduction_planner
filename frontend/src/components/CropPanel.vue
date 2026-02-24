@@ -3,7 +3,6 @@ import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
 import { useProjectStore } from '../stores/project'
-import { imageUrl } from '../api/client'
 
 const store = useProjectStore()
 const imgRef = ref<HTMLImageElement | null>(null)
@@ -93,7 +92,7 @@ watch(
       <img
         v-if="store.current"
         ref="imgRef"
-        :src="imageUrl(store.current.id, 'original.png')"
+        :src="store.imageUrls.original"
         alt="Crop source"
         class="crop-image"
       />
