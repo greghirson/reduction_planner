@@ -5,6 +5,7 @@ import type { ProjectRecord } from '../services/storage'
 import { cropImage as cropBlob } from '../services/cropper'
 import { flipImage as flipBlob } from '../services/flipper'
 import { quantize as runQuantize, replacePalette as runReplacePalette } from '../services/quantizer'
+import { buildLayers as runBuildLayers } from '../services/layerBuilder'
 
 export interface Project {
   id: string
@@ -274,11 +275,30 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function createLayers(_order?: number[]) {
-    if (!currentRecord.value) return
+  async function createLayers(order?: number[]) {
+    if (!currentRecord.value || !currentRecord.value.palette) return
     loading.value = true
     try {
-      throw new Error('Layer building not yet implemented — coming in Phase 4')
+      const source = currentRecord.value.images.flipped ?? currentRecord.value.images.quantized!
+      const result = await runBuildLayers(
+        source,
+        currentRecord.value.palette,
+        currentRecord.value.labels,
+        currentRecord.value.imageWidth,
+        currentRecord.value.imageHeight,
+        order,
+      )
+
+      const record: ProjectRecord = {
+        ...currentRecord.value,
+        state: 'layers_created',
+        layer_order: result.order,
+        images: {
+          ...currentRecord.value.images,
+          layers: result.layers,
+        },
+      }
+      await saveAndRefresh(record)
     } finally {
       loading.value = false
     }
