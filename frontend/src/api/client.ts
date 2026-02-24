@@ -58,6 +58,15 @@ export async function updatePalette(id: string, palette: number[][]) {
   return res.json()
 }
 
+export async function flipImage(id: string, horizontal: boolean, vertical: boolean) {
+  const res = await request(`/projects/${id}/flip`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ horizontal, vertical }),
+  })
+  return res.json()
+}
+
 export async function createLayers(id: string, order?: number[]) {
   const res = await request(`/projects/${id}/layers`, {
     method: 'POST',

@@ -41,11 +41,18 @@ def quantize(project_id: str, color_count: int) -> dict:
     # Save labels so palette replacement doesn't need to re-run k-means
     np.save(project_dir / "labels.npy", labels.reshape(img.size[1], img.size[0]))
 
+    # Clear flip state on re-quantize
+    flipped_path = project_dir / "flipped.png"
+    if flipped_path.exists():
+        flipped_path.unlink()
+
     meta = get_project(project_id)
     meta["state"] = "quantized"
     meta["color_count"] = color_count
     meta["palette"] = palette
     meta.pop("layer_count", None)
+    meta.pop("h_flip", None)
+    meta.pop("v_flip", None)
     save_meta(project_id, meta)
     return meta
 

@@ -15,7 +15,9 @@ def _luminance(color: list[int]) -> float:
 def build_layers(project_id: str, order: list[int] | None = None) -> dict:
     project_dir = get_project_dir(project_id)
     palette = json.loads((project_dir / "palette.json").read_text())
-    img = Image.open(project_dir / "quantized.png")
+    flipped_path = project_dir / "flipped.png"
+    source_path = flipped_path if flipped_path.exists() else project_dir / "quantized.png"
+    img = Image.open(source_path)
     pixels = np.array(img)
 
     # Find the white (paper) color — always force it to the bottom

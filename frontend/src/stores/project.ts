@@ -10,6 +10,8 @@ export interface Project {
   palette?: number[][]
   layer_order?: number[]
   layer_count?: number
+  h_flip?: boolean | null
+  v_flip?: boolean | null
 }
 
 export const useProjectStore = defineStore('project', () => {
@@ -71,6 +73,17 @@ export const useProjectStore = defineStore('project', () => {
     imageVersion.value++
   }
 
+  async function flipImage(horizontal: boolean, vertical: boolean) {
+    if (!current.value) return
+    loading.value = true
+    try {
+      current.value = await api.flipImage(current.value.id, horizontal, vertical)
+      imageVersion.value++
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function createLayers(order?: number[]) {
     if (!current.value) return
     loading.value = true
@@ -81,5 +94,5 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  return { projects, current, loading, imageVersion, fetchProjects, loadProject, createProject, deleteProject, cropImage, quantize, updatePalette, createLayers }
+  return { projects, current, loading, imageVersion, fetchProjects, loadProject, createProject, deleteProject, cropImage, quantize, updatePalette, flipImage, createLayers }
 })

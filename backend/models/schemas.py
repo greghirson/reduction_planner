@@ -15,6 +15,8 @@ class ProjectDetail(BaseModel):
     palette: list[list[int]] | None = None
     layer_order: list[int] | None = None
     layer_count: int | None = None
+    h_flip: bool | None = None
+    v_flip: bool | None = None
 
 
 class CropRequest(BaseModel):
@@ -30,6 +32,11 @@ class QuantizeRequest(BaseModel):
 
 class PaletteUpdateRequest(BaseModel):
     palette: list[list[int]]
+
+
+class FlipRequest(BaseModel):
+    horizontal: bool = False
+    vertical: bool = False
 
 
 class LayerRequest(BaseModel):

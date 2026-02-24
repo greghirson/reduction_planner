@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from backend.models.schemas import CropRequest, QuantizeRequest, PaletteUpdateRequest, LayerRequest, ProjectDetail
-from backend.services import project_manager, quantizer, layer_builder, exporter, cropper
+from backend.models.schemas import CropRequest, QuantizeRequest, PaletteUpdateRequest, LayerRequest, FlipRequest, ProjectDetail
+from backend.services import project_manager, quantizer, layer_builder, exporter, cropper, flipper
 
 router = APIRouter(prefix="/api/projects", tags=["processing"])
 
@@ -35,6 +35,17 @@ async def update_palette(project_id: str, req: PaletteUpdateRequest):
     if len(req.palette) != meta["color_count"]:
         raise HTTPException(status_code=400, detail="Palette size must match color_count")
     result = quantizer.replace_palette(project_id, req.palette)
+    return result
+
+
+@router.post("/{project_id}/flip", response_model=ProjectDetail)
+async def flip_image(project_id: str, req: FlipRequest):
+    meta = project_manager.get_project(project_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if meta["state"] not in ("quantized", "layers_created"):
+        raise HTTPException(status_code=400, detail="Must quantize first")
+    result = flipper.flip(project_id, req.horizontal, req.vertical)
     return result
 
 

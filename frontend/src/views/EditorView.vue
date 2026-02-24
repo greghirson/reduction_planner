@@ -4,6 +4,7 @@ import { useProjectStore } from '../stores/project'
 import { imageUrl } from '../api/client'
 import CropPanel from '../components/CropPanel.vue'
 import QuantizationPanel from '../components/QuantizationPanel.vue'
+import FlipPanel from '../components/FlipPanel.vue'
 import LayerViewer from '../components/LayerViewer.vue'
 import ExportPanel from '../components/ExportPanel.vue'
 
@@ -20,15 +21,35 @@ const hasQuantized = computed(() =>
   project.value && ['quantized', 'layers_created'].includes(project.value.state)
 )
 const hasLayers = computed(() => project.value?.state === 'layers_created')
+const hasFlip = computed(() => project.value?.h_flip || project.value?.v_flip)
 const previewImage = computed(() =>
   hasCropped.value ? 'cropped.png' : 'original.png'
 )
 
 const cropOpen = ref(true)
+const quantizeOpen = ref(false)
+const flipOpen = ref(false)
+const layersOpen = ref(false)
+const exportOpen = ref(false)
 
-// Auto-collapse crop panel once cropped
+// Auto-collapse completed steps and open the next one
 watch(hasCropped, (val) => {
-  if (val) cropOpen.value = false
+  if (val) {
+    cropOpen.value = false
+    quantizeOpen.value = true
+  }
+})
+watch(hasQuantized, (val) => {
+  if (val) {
+    quantizeOpen.value = false
+    flipOpen.value = true
+  }
+})
+watch(hasLayers, (val) => {
+  if (val) {
+    layersOpen.value = false
+    exportOpen.value = true
+  }
 })
 </script>
 
@@ -48,6 +69,10 @@ watch(hasCropped, (val) => {
           <h4>Quantized ({{ project.color_count }} colors)</h4>
           <img :src="imageUrl(project.id, 'quantized.png') + '?v=' + store.imageVersion" alt="Quantized" class="preview" />
         </div>
+        <div v-if="hasFlip">
+          <h4>Flipped</h4>
+          <img :src="imageUrl(project.id, 'flipped.png') + '?v=' + store.imageVersion" alt="Flipped" class="preview" />
+        </div>
       </div>
     </section>
 
@@ -63,18 +88,46 @@ watch(hasCropped, (val) => {
     </section>
 
     <section class="panel">
-      <h3>Quantization</h3>
-      <QuantizationPanel />
+      <h3 class="accordion-header" @click="quantizeOpen = !quantizeOpen">
+        <span class="accordion-arrow" :class="{ open: quantizeOpen }">&#9654;</span>
+        Quantization
+        <span v-if="hasQuantized && !quantizeOpen" class="accordion-badge">{{ project.color_count }} colors</span>
+      </h3>
+      <div v-show="quantizeOpen" class="accordion-body">
+        <QuantizationPanel />
+      </div>
     </section>
 
     <section v-if="hasQuantized" class="panel">
-      <h3>Layers</h3>
-      <LayerViewer />
+      <h3 class="accordion-header" @click="flipOpen = !flipOpen">
+        <span class="accordion-arrow" :class="{ open: flipOpen }">&#9654;</span>
+        Flip / Mirror
+        <span v-if="hasFlip && !flipOpen" class="accordion-badge">Flipped</span>
+      </h3>
+      <div v-show="flipOpen" class="accordion-body">
+        <FlipPanel />
+      </div>
+    </section>
+
+    <section v-if="hasQuantized" class="panel">
+      <h3 class="accordion-header" @click="layersOpen = !layersOpen">
+        <span class="accordion-arrow" :class="{ open: layersOpen }">&#9654;</span>
+        Layers
+        <span v-if="hasLayers && !layersOpen" class="accordion-badge">Ready</span>
+      </h3>
+      <div v-show="layersOpen" class="accordion-body">
+        <LayerViewer />
+      </div>
     </section>
 
     <section v-if="hasLayers" class="panel">
-      <h3>Export</h3>
-      <ExportPanel />
+      <h3 class="accordion-header" @click="exportOpen = !exportOpen">
+        <span class="accordion-arrow" :class="{ open: exportOpen }">&#9654;</span>
+        Export
+      </h3>
+      <div v-show="exportOpen" class="accordion-body">
+        <ExportPanel />
+      </div>
     </section>
   </div>
 </template>
