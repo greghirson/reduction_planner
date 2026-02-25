@@ -4,7 +4,7 @@ import * as storage from '../services/storage'
 import type { ProjectRecord } from '../services/storage'
 import { cropImage as cropBlob } from '../services/cropper'
 import { flipImage as flipBlob } from '../services/flipper'
-import { quantize as runQuantize, replacePalette as runReplacePalette } from '../services/quantizer'
+import { quantize as runQuantize, replacePalette as runReplacePalette, mergeAndReplace as runMergeAndReplace } from '../services/quantizer'
 import { buildLayers as runBuildLayers } from '../services/layerBuilder'
 import { floodFillToWhite, floodFillToColor } from '../services/backgroundRemover'
 
@@ -380,6 +380,43 @@ export const useProjectStore = defineStore('project', () => {
     await saveAndRefresh(record)
   }
 
+  async function mergeColors(keepIndex: number, removeIndex: number) {
+    if (!currentRecord.value || !currentRecord.value.labels || !currentRecord.value.palette) return
+    loading.value = true
+    try {
+      const result = await runMergeAndReplace(
+        currentRecord.value.labels,
+        currentRecord.value.palette,
+        keepIndex,
+        removeIndex,
+        currentRecord.value.imageWidth!,
+        currentRecord.value.imageHeight!,
+      )
+
+      const record: ProjectRecord = {
+        ...currentRecord.value,
+        palette: result.palette,
+        labels: result.labels,
+        color_count: result.palette.length,
+        layer_order: undefined,
+        h_flip: undefined,
+        v_flip: undefined,
+        images: {
+          ...currentRecord.value.images,
+          quantized: result.quantizedBlob,
+          flipped: undefined,
+          layers: undefined,
+        },
+      }
+      if (record.state === 'layers_created') {
+        record.state = 'quantized'
+      }
+      await saveAndRefresh(record)
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     projects,
     current,
@@ -396,6 +433,7 @@ export const useProjectStore = defineStore('project', () => {
     resetBackground,
     quantize,
     updatePalette,
+    mergeColors,
     flipImage,
     createLayers,
   }

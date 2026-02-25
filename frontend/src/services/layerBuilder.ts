@@ -137,6 +137,20 @@ export async function buildLayers(
       ? i : best
   , 0)
 
+  // Find black (closest to [0,0,0]) — always first, if dark enough
+  let blackIdx = -1
+  let blackDist = Infinity
+  for (let i = 0; i < palette.length; i++) {
+    const r = palette[i]![0]!, g = palette[i]![1]!, b = palette[i]![2]!
+    const dist = r * r + g * g + b * b
+    if (dist < blackDist) {
+      blackDist = dist
+      blackIdx = i
+    }
+  }
+  const blackLum = luminance(palette[blackIdx]![0]!, palette[blackIdx]![1]!, palette[blackIdx]![2]!)
+  const forceBlack = blackLum < 50 && blackIdx !== whiteIdx
+
   if (!order) {
     // Sort by luminance: darkest first, lightest last
     const indexed = palette.map((color, i) => ({ i, lum: luminance(color[0]!, color[1]!, color[2]!) }))
@@ -145,6 +159,11 @@ export async function buildLayers(
   } else if (order[order.length - 1] !== whiteIdx) {
     // Ensure white is always last
     order = [...order.filter(i => i !== whiteIdx), whiteIdx]
+  }
+
+  // Force black to position 0
+  if (forceBlack && order[0] !== blackIdx) {
+    order = [blackIdx, ...order.filter(i => i !== blackIdx)]
   }
 
   const sortedPalette = order.map(i => palette[i]!)

@@ -101,3 +101,30 @@ export async function replacePalette(
 ): Promise<Blob> {
   return renderQuantized(newPalette, labels, width, height)
 }
+
+export async function mergeAndReplace(
+  labels: Uint8Array,
+  palette: number[][],
+  keepIdx: number,
+  removeIdx: number,
+  width: number,
+  height: number,
+): Promise<{ labels: Uint8Array; palette: number[][]; quantizedBlob: Blob }> {
+  const newLabels = new Uint8Array(labels.length)
+  for (let i = 0; i < labels.length; i++) {
+    let label = labels[i]!
+    if (label === removeIdx) {
+      label = keepIdx
+    }
+    // Shift labels above the removed index down by 1
+    if (label > removeIdx) {
+      label--
+    }
+    newLabels[i] = label
+  }
+
+  // Adjust keepIdx if it was above removeIdx
+  const newPalette = palette.filter((_, i) => i !== removeIdx)
+  const quantizedBlob = await renderQuantized(newPalette, newLabels, width, height)
+  return { labels: newLabels, palette: newPalette, quantizedBlob }
+}
