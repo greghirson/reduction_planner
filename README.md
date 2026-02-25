@@ -54,3 +54,7 @@ The output goes to `frontend/dist/` and can be deployed to any static hosting pr
 - **Vite** for development and builds
 
 No backend, no external APIs, no accounts. All processing happens client-side.
+
+## License
+
+This project is licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). You are free to use, share, and adapt it for non-commercial purposes with attribution.
