@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useProjectStore } from '../stores/project'
 import { buildLayerGif } from '../services/gifBuilder'
 import { triggerDownload } from '../services/exporter'
@@ -8,6 +8,7 @@ const store = useProjectStore()
 const generating = ref(false)
 const gifUrl = ref<string | null>(null)
 const delay = ref(500)
+const sourceWidth = computed(() => store.currentRecord?.imageWidth ?? 1200)
 const gifWidth = ref(500)
 
 function cleanup() {
@@ -55,7 +56,7 @@ onUnmounted(cleanup)
       </label>
       <label class="speed-control">
         Width:
-        <input type="range" min="100" max="1200" step="50" v-model.number="gifWidth" />
+        <input type="range" min="100" :max="sourceWidth" step="50" v-model.number="gifWidth" />
         <span class="delay-label">{{ gifWidth }}px</span>
       </label>
       <button class="primary" @click="generate" :disabled="generating">
