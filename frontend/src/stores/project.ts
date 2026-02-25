@@ -165,7 +165,9 @@ export const useProjectStore = defineStore('project', () => {
     currentRecord.value = record
     current.value = projectFromRecord(record)
     buildBlobUrls(record)
-    await storage.saveProject(record)
+    // Clone before saving — some browsers (Safari/WebKit) invalidate in-memory
+    // Blob data when the original object is passed through IDB structured clone
+    await storage.saveProject(structuredClone(record))
   }
 
   // --- Processing stubs (implemented in later phases) ---
@@ -197,14 +199,14 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function quantize(colorCount: number) {
+  async function quantize(colorCount: number, simplification: number = 0) {
     if (!currentRecord.value) return
     loading.value = true
     try {
       const source = currentRecord.value.images.backgroundRemoved
         ?? currentRecord.value.images.cropped
         ?? currentRecord.value.images.original!
-      const result = await runQuantize(source, colorCount)
+      const result = await runQuantize(source, colorCount, simplification)
 
       const record: ProjectRecord = {
         ...currentRecord.value,

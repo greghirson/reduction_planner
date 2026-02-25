@@ -4,8 +4,10 @@ import { useProjectStore } from '../stores/project'
 
 const store = useProjectStore()
 const colorCount = ref(5)
+const simplification = ref(50)
 const editingIndex = ref<number | null>(null)
 const pendingPalette = ref<number[][] | null>(null)
+const error = ref<string | null>(null)
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -60,7 +62,12 @@ async function confirmColor() {
 async function doQuantize() {
   editingIndex.value = null
   pendingPalette.value = null
-  await store.quantize(colorCount.value)
+  error.value = null
+  try {
+    await store.quantize(colorCount.value, simplification.value)
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  }
 }
 
 // Reset editing state when palette changes externally (e.g. re-quantize)
@@ -78,10 +85,15 @@ watch(palette, () => {
         Colors: <strong>{{ colorCount }}</strong>
         <input type="range" min="2" max="12" v-model.number="colorCount" />
       </label>
+      <label>
+        Simplification: <strong>{{ simplification }}</strong>
+        <input type="range" min="0" max="100" v-model.number="simplification" />
+      </label>
       <button class="primary" @click="doQuantize" :disabled="store.loading">
         {{ store.loading ? 'Quantizing...' : 'Quantize' }}
       </button>
     </div>
+    <div v-if="error" style="color: red; font-size: 0.9rem;">Error: {{ error }}</div>
     <div v-if="displayPalette.length" class="palette">
       <div
         v-for="(color, i) in displayPalette"

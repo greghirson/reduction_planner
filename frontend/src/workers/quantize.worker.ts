@@ -8,6 +8,7 @@ interface KMeansInput {
   width: number
   height: number
   colorCount: number
+  simplification: number
 }
 
 // Flat RGB buffers: pixel i is at offset i*3
@@ -122,8 +123,121 @@ function kmeans(
   return centroids
 }
 
+function modeFilter(labels: Uint8Array, width: number, height: number, radius: number): void {
+  if (radius <= 0) return
+  const copy = new Uint8Array(labels)
+  const counts = new Uint32Array(256)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      counts.fill(0)
+      const x0 = Math.max(0, x - radius)
+      const x1 = Math.min(width - 1, x + radius)
+      const y0 = Math.max(0, y - radius)
+      const y1 = Math.min(height - 1, y + radius)
+      for (let ny = y0; ny <= y1; ny++) {
+        for (let nx = x0; nx <= x1; nx++) {
+          const lbl = copy[ny * width + nx]!
+          counts[lbl] = counts[lbl]! + 1
+        }
+      }
+      const current = copy[y * width + x]!
+      let bestLabel = current
+      let bestCount = counts[current]!
+      for (let lbl = 0; lbl < 256; lbl++) {
+        if (counts[lbl]! > bestCount) {
+          bestCount = counts[lbl]!
+          bestLabel = lbl
+        }
+      }
+      labels[y * width + x] = bestLabel
+    }
+  }
+}
+
+function mergeSmallRegions(labels: Uint8Array, width: number, height: number, minSize: number): void {
+  if (minSize <= 1) return
+  const totalPixels = width * height
+
+  // Pass 1: BFS flood-fill to assign component IDs.
+  // The queue stores ALL pixel indices; each component occupies a contiguous slice.
+  const componentId = new Int32Array(totalPixels).fill(-1)
+  const queue = new Uint32Array(totalPixels)
+  let queueEnd = 0
+  let numComponents = 0
+  const componentStart: number[] = []
+  const componentLabel: number[] = []
+
+  for (let i = 0; i < totalPixels; i++) {
+    if (componentId[i] !== -1) continue
+    const label = labels[i]!
+    const id = numComponents++
+    componentLabel.push(label)
+    componentStart.push(queueEnd)
+    let head = queueEnd
+    queue[queueEnd++] = i
+    componentId[i] = id
+    while (head < queueEnd) {
+      const px = queue[head++]!
+      const x = px % width
+      const y = (px - x) / width
+      if (y > 0 && componentId[px - width] === -1 && labels[px - width] === label) {
+        componentId[px - width] = id
+        queue[queueEnd++] = px - width
+      }
+      if (y < height - 1 && componentId[px + width] === -1 && labels[px + width] === label) {
+        componentId[px + width] = id
+        queue[queueEnd++] = px + width
+      }
+      if (x > 0 && componentId[px - 1] === -1 && labels[px - 1] === label) {
+        componentId[px - 1] = id
+        queue[queueEnd++] = px - 1
+      }
+      if (x < width - 1 && componentId[px + 1] === -1 && labels[px + 1] === label) {
+        componentId[px + 1] = id
+        queue[queueEnd++] = px + 1
+      }
+    }
+  }
+  // Sentinel so last component's size can be computed as start[c+1] - start[c]
+  componentStart.push(queueEnd)
+
+  // Pass 2: For each small component, iterate its pixels from the queue
+  // and find the most common neighboring label
+  const neighborCounts = new Uint32Array(256)
+  for (let c = 0; c < numComponents; c++) {
+    const size = componentStart[c + 1]! - componentStart[c]!
+    if (size >= minSize) continue
+
+    neighborCounts.fill(0)
+    for (let q = componentStart[c]!; q < componentStart[c + 1]!; q++) {
+      const px = queue[q]!
+      const x = px % width
+      const y = (px - x) / width
+      if (y > 0 && componentId[px - width] !== c) { const l = labels[px - width]!; neighborCounts[l] = neighborCounts[l]! + 1 }
+      if (y < height - 1 && componentId[px + width] !== c) { const l = labels[px + width]!; neighborCounts[l] = neighborCounts[l]! + 1 }
+      if (x > 0 && componentId[px - 1] !== c) { const l = labels[px - 1]!; neighborCounts[l] = neighborCounts[l]! + 1 }
+      if (x < width - 1 && componentId[px + 1] !== c) { const l = labels[px + 1]!; neighborCounts[l] = neighborCounts[l]! + 1 }
+    }
+
+    let bestLabel = componentLabel[c]!
+    let bestCount = 0
+    for (let lbl = 0; lbl < 256; lbl++) {
+      if (neighborCounts[lbl]! > bestCount) {
+        bestCount = neighborCounts[lbl]!
+        bestLabel = lbl
+      }
+    }
+    if (bestCount === 0) continue
+
+    // Relabel this component's pixels
+    for (let q = componentStart[c]!; q < componentStart[c + 1]!; q++) {
+      labels[queue[q]!] = bestLabel
+    }
+  }
+}
+
 self.onmessage = (e: MessageEvent<KMeansInput>) => {
-  const { pixels, width, height, colorCount } = e.data
+  const { pixels, width, height, colorCount, simplification } = e.data
   const totalPixels = width * height
 
   // Extract RGB into flat Float64Array (skip alpha)
@@ -187,6 +301,19 @@ self.onmessage = (e: MessageEvent<KMeansInput>) => {
       }
     }
     labels[i] = bestIdx
+  }
+
+  // Post-processing: spatial cleanup controlled by simplification (0-100)
+  if (simplification > 0) {
+    // Mode filter: radius 0-4 based on simplification
+    const radius = Math.round(simplification / 25)
+    modeFilter(labels, width, height, radius)
+    self.postMessage({ progress: 0.85 })
+
+    // Connected component merge: minSize scales to ~0.5% of total pixels at 100
+    const minSize = Math.round((simplification / 100) * 0.005 * totalPixels)
+    mergeSmallRegions(labels, width, height, minSize)
+    self.postMessage({ progress: 0.95 })
   }
 
   // Convert flat palette buffer to number[][] for output

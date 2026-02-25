@@ -6,25 +6,16 @@ export interface QuantizeResult {
   height: number
 }
 
-function loadImageData(source: Blob): Promise<{ imageData: ImageData; width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = img.naturalWidth
-      canvas.height = img.naturalHeight
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0)
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      URL.revokeObjectURL(img.src)
-      resolve({ imageData, width: canvas.width, height: canvas.height })
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(img.src)
-      reject(new Error('Failed to load image for quantization'))
-    }
-    img.src = URL.createObjectURL(source)
-  })
+async function loadImageData(source: Blob): Promise<{ imageData: ImageData; width: number; height: number }> {
+  const bitmap = await createImageBitmap(source)
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(bitmap, 0, 0)
+  bitmap.close()
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  return { imageData, width: canvas.width, height: canvas.height }
 }
 
 function renderQuantized(
@@ -60,34 +51,28 @@ function renderQuantized(
   })
 }
 
-export function quantize(
+export async function quantize(
   source: Blob,
   colorCount: number,
+  simplification: number = 0,
   onProgress?: (progress: number) => void,
 ): Promise<QuantizeResult> {
-  return new Promise(async (resolve, reject) => {
-    const { imageData, width, height } = await loadImageData(source)
+  const { imageData, width, height } = await loadImageData(source)
 
+  const { palette, labels } = await new Promise<{ palette: number[][]; labels: Uint8Array }>((resolve, reject) => {
     const worker = new Worker(
       new URL('../workers/quantize.worker.ts', import.meta.url),
       { type: 'module' },
     )
 
-    worker.onmessage = async (e) => {
+    worker.onmessage = (e) => {
       if (e.data.progress !== undefined) {
         onProgress?.(e.data.progress)
         return
       }
 
-      const { palette, labels } = e.data as { palette: number[][]; labels: Uint8Array }
       worker.terminate()
-
-      try {
-        const quantizedBlob = await renderQuantized(palette, labels, width, height)
-        resolve({ palette, labels, quantizedBlob, width, height })
-      } catch (err) {
-        reject(err)
-      }
+      resolve(e.data as { palette: number[][]; labels: Uint8Array })
     }
 
     worker.onerror = (err) => {
@@ -100,8 +85,12 @@ export function quantize(
       width,
       height,
       colorCount,
+      simplification,
     })
   })
+
+  const quantizedBlob = await renderQuantized(palette, labels, width, height)
+  return { palette, labels, quantizedBlob, width, height }
 }
 
 export async function replacePalette(
