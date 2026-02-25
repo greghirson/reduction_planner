@@ -15,3 +15,7 @@ frontend/dist/
 
 # Runtime data
 projects_data/
+
+# Project notes
+CLAUDE.md
+plan.md
