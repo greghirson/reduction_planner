@@ -2,22 +2,18 @@ import { GIFEncoder, quantize, applyPalette } from 'gifenc'
 
 /**
  * Load a blob into an offscreen canvas and replace white (255,255,255)
- * pixels with fully transparent, returning the canvas.
+ * pixels with fully transparent, returning the canvas at native size.
  */
-function loadLayerTransparent(
-  blob: Blob,
-  width: number,
-  height: number,
-): Promise<HTMLCanvasElement> {
+function loadLayerTransparent(blob: Blob): Promise<HTMLCanvasElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
       const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
       const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0, width, height)
-      const imageData = ctx.getImageData(0, 0, width, height)
+      ctx.drawImage(img, 0, 0)
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
       const d = imageData.data
       for (let i = 0; i < d.length; i += 4) {
         if (d[i] === 255 && d[i + 1] === 255 && d[i + 2] === 255) {
@@ -36,20 +32,6 @@ function loadLayerTransparent(
   })
 }
 
-function getImageDimensions(blob: Blob): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      resolve({ width: img.naturalWidth, height: img.naturalHeight })
-      URL.revokeObjectURL(img.src)
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(img.src)
-      reject(new Error('Failed to read layer dimensions'))
-    }
-    img.src = URL.createObjectURL(blob)
-  })
-}
 
 /**
  * Build an animated GIF showing layers composited in reverse order.
@@ -66,27 +48,40 @@ function getImageDimensions(blob: Blob): Promise<{ width: number; height: number
 export async function buildLayerGif(
   layers: Blob[],
   delay: number = 500,
+  targetWidth?: number,
 ): Promise<Blob> {
   if (layers.length === 0) throw new Error('No layers to encode')
 
-  const { width, height } = await getImageDimensions(layers[0]!)
-
-  // Pre-load all layers with white → transparent
+  // Pre-load all layers at native size with white → transparent
   const transparentLayers: HTMLCanvasElement[] = []
   for (const blob of layers) {
-    transparentLayers.push(await loadLayerTransparent(blob, width, height))
+    transparentLayers.push(await loadLayerTransparent(blob))
   }
 
-  // Composite canvas accumulates layers
+  const srcW = transparentLayers[0]!.width
+  const srcH = transparentLayers[0]!.height
+
+  // Output dimensions (scale down if targetWidth is smaller than source)
+  const outW = targetWidth && targetWidth < srcW ? targetWidth : srcW
+  const outH = Math.round(srcH * (outW / srcW))
+
+  // Composite canvas at native resolution (avoids scaling artifacts between layers)
   const composite = document.createElement('canvas')
-  composite.width = width
-  composite.height = height
+  composite.width = srcW
+  composite.height = srcH
   const compCtx = composite.getContext('2d')!
+
+  // Scale canvas for final frame output
+  const scaled = document.createElement('canvas')
+  scaled.width = outW
+  scaled.height = outH
+  const scaledCtx = scaled.getContext('2d')!
+  scaledCtx.imageSmoothingEnabled = false
 
   const gif = GIFEncoder()
 
   // First frame: solid white background
-  const whitePixels = new Uint8Array(width * height * 4)
+  const whitePixels = new Uint8Array(outW * outH * 4)
   for (let i = 0; i < whitePixels.length; i += 4) {
     whitePixels[i] = 255
     whitePixels[i + 1] = 255
@@ -95,18 +90,22 @@ export async function buildLayerGif(
   }
   const whitePalette = quantize(whitePixels, 256, { format: 'rgba4444', oneBitAlpha: true })
   const whiteIndex = applyPalette(whitePixels, whitePalette, 'rgba4444')
-  gif.writeFrame(whiteIndex, width, height, {
+  gif.writeFrame(whiteIndex, outW, outH, {
     palette: whitePalette,
     delay,
   })
 
   // Build frames in reverse: last layer first, layer 0 last
   for (let i = layers.length - 1; i >= 0; i--) {
-    // Draw this layer on top of the composite (white is already transparent)
+    // Draw this layer on top of the composite at native resolution
     compCtx.drawImage(transparentLayers[i]!, 0, 0)
 
-    // Extract RGBA pixels from the composite
-    const imageData = compCtx.getImageData(0, 0, width, height)
+    // Scale the composite down to output size
+    scaledCtx.clearRect(0, 0, outW, outH)
+    scaledCtx.drawImage(composite, 0, 0, outW, outH)
+
+    // Extract RGBA pixels from the scaled frame
+    const imageData = scaledCtx.getImageData(0, 0, outW, outH)
     const rgba = new Uint8Array(imageData.data.buffer)
 
     // Quantize for GIF
@@ -125,7 +124,7 @@ export async function buildLayerGif(
     const isLast = i === 0
     const frameDelay = isLast ? Math.max(delay, 1500) : delay
 
-    gif.writeFrame(index, width, height, {
+    gif.writeFrame(index, outW, outH, {
       palette: gifPalette,
       delay: frameDelay,
       transparent: true,

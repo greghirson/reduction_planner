@@ -8,6 +8,7 @@ const store = useProjectStore()
 const generating = ref(false)
 const gifUrl = ref<string | null>(null)
 const delay = ref(500)
+const gifWidth = ref(500)
 
 function cleanup() {
   if (gifUrl.value) {
@@ -23,7 +24,7 @@ async function generate() {
   generating.value = true
   cleanup()
   try {
-    const blob = await buildLayerGif(record.images.layers, delay.value)
+    const blob = await buildLayerGif(record.images.layers, delay.value, gifWidth.value)
     gifUrl.value = URL.createObjectURL(blob)
   } finally {
     generating.value = false
@@ -51,6 +52,11 @@ onUnmounted(cleanup)
         Speed:
         <input type="range" min="200" max="2000" step="100" v-model.number="delay" />
         <span class="delay-label">{{ delay }}ms</span>
+      </label>
+      <label class="speed-control">
+        Width:
+        <input type="range" min="100" max="1200" step="50" v-model.number="gifWidth" />
+        <span class="delay-label">{{ gifWidth }}px</span>
       </label>
       <button class="primary" @click="generate" :disabled="generating">
         {{ generating ? 'Generating...' : gifUrl ? 'Regenerate GIF' : 'Generate GIF' }}
