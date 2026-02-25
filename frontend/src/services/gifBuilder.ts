@@ -85,6 +85,21 @@ export async function buildLayerGif(
 
   const gif = GIFEncoder()
 
+  // First frame: solid white background
+  const whitePixels = new Uint8Array(width * height * 4)
+  for (let i = 0; i < whitePixels.length; i += 4) {
+    whitePixels[i] = 255
+    whitePixels[i + 1] = 255
+    whitePixels[i + 2] = 255
+    whitePixels[i + 3] = 255
+  }
+  const whitePalette = quantize(whitePixels, 256, { format: 'rgba4444', oneBitAlpha: true })
+  const whiteIndex = applyPalette(whitePixels, whitePalette, 'rgba4444')
+  gif.writeFrame(whiteIndex, width, height, {
+    palette: whitePalette,
+    delay,
+  })
+
   // Build frames in reverse: last layer first, layer 0 last
   for (let i = layers.length - 1; i >= 0; i--) {
     // Draw this layer on top of the composite (white is already transparent)
