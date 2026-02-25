@@ -7,6 +7,7 @@ import QuantizationPanel from '../components/QuantizationPanel.vue'
 import FlipPanel from '../components/FlipPanel.vue'
 import LayerViewer from '../components/LayerViewer.vue'
 import ExportPanel from '../components/ExportPanel.vue'
+import GifPreview from '../components/GifPreview.vue'
 
 const props = defineProps<{ id: string }>()
 const store = useProjectStore()
@@ -33,6 +34,7 @@ const quantizeOpen = ref(false)
 const flipOpen = ref(false)
 const layersOpen = ref(false)
 const exportOpen = ref(false)
+const gifOpen = ref(false)
 
 // Determine which step is the current active one based on project state
 function activeStep(): string {
@@ -53,6 +55,7 @@ function openStep(step: string) {
   flipOpen.value = step === 'flip'
   layersOpen.value = step === 'layers' || step === 'export'
   exportOpen.value = step === 'export'
+  gifOpen.value = step === 'gif'
 }
 
 function onBackgroundDone() {
@@ -150,6 +153,16 @@ watch(() => project.value?.state, () => {
       </h3>
       <div v-show="exportOpen" class="accordion-body">
         <ExportPanel />
+      </div>
+    </section>
+
+    <section v-if="hasLayers" class="panel">
+      <h3 class="accordion-header" @click="gifOpen = !gifOpen">
+        <span class="accordion-arrow" :class="{ open: gifOpen }">&#9654;</span>
+        GIF Preview
+      </h3>
+      <div v-show="gifOpen" class="accordion-body">
+        <GifPreview />
       </div>
     </section>
   </div>
