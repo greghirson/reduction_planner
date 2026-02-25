@@ -23,7 +23,7 @@ async function onDelete(id: string) {
 <template>
   <div class="home">
     <p class="intro">
-      Plan your reduction block prints from start to finish. Upload a photo or image, reduce it to a limited color palette, arrange your layers, and export print-ready separations.
+      Plan your reduction block prints from start to finish. Upload a photo or image, reduce it to a limited color palette, arrange your layers, and export print-ready separations. You can also export an animated GIF preview to visualize the print build-up or share it with others. Everything runs entirely in your browser — no data is ever sent to a server.
     </p>
 
     <section class="upload-section">
